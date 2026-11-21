@@ -271,15 +271,23 @@ Tests automatisés :
 
   uv run pytest tests/test_api.py -q
 
-Docker (si Docker Desktop installé) :
+Docker (Docker Desktop doit être démarré — icône baleine active) :
 
   docker build -t credit-scoring-api .
-  docker run --rm -p 8000:8000 credit-scoring-api
+  # Port hôte 8001 recommandé : le 8000 est souvent déjà pris sur Windows.
+  docker run --rm -d --name credit-scoring-api-run -p 8001:8000 credit-scoring-api
+
+  curl http://127.0.0.1:8001/health
+  curl http://127.0.0.1:8001/model/info
+  # Arrêt : docker rm -f credit-scoring-api-run
 
 Impact :
   Charge le modèle UNE fois au démarrage (lifespan).
   Écrit des logs JSONL dans logs/predictions.jsonl (ignoré par Git).
   Ne dépend PAS de mlflow.db pour prédire (lit models/champion_lgbm_optuna.txt).
+  Image basée sur requirements-api.txt (légère), pas sur tout le stack notebooks/MLflow.
+
+Note consigne : déploiement cloud NON obligatoire — « simulé localement ou réel » suffit.
 
 
 --------------------------------------------------------------------------------

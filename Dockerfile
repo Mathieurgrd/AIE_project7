@@ -1,4 +1,4 @@
-# Image API scoring crédit (partie 2).
+# Image API scoring crédit (partie 2) — deps runtime seulement.
 # Build : docker build -t credit-scoring-api .
 # Run  : docker run --rm -p 8000:8000 credit-scoring-api
 
@@ -11,20 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Installer uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY requirements-api.txt ./
+RUN pip install --no-cache-dir -r requirements-api.txt
 
-COPY pyproject.toml uv.lock README.md ./
-COPY src ./src
 COPY api ./api
 COPY models ./models
-COPY reports ./reports
+COPY reports/api_feature_schema.json ./reports/api_feature_schema.json
+COPY reports/api_sample_client.json ./reports/api_sample_client.json
 
-# Dépendances lockées ; PYTHONPATH pour importer api/ et src/
-RUN uv sync --frozen --no-dev
-ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
-
 EXPOSE 8000
 
 # Modèle chargé au startup (lifespan FastAPI), pas à chaque requête.

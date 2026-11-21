@@ -242,9 +242,14 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
   - Validation : champs manquants, types incorrects, plages invalides (âge < 0, revenu ≤ 0, …) → HTTP 422.
   - Logs JSONL locaux : `logs/predictions.jsonl` (base pour étape 3 drift).
   - Conteneur : `Dockerfile` + `.dockerignore` (sans `data/` ni `mlruns/`).
+  - Image **slim** via `requirements-api.txt` (FastAPI/LightGBM/pandas seulement) — pas tout `pyproject.toml` (sinon téléchargement XGBoost/MLflow/CUDA énorme et fragile).
 - **Pourquoi pas Gradio :** moins adapté aux tests Pytest / pipeline CI ; FastAPI = contrat HTTP clair pour un chargé d’études / SI.
-- **Validation :** `uv run pytest tests/test_api.py` → 7 passed.
-- **Conséquences :** suite = GitHub Actions (CI) + drift Evidently + opti ; déploiement cloud à valider avec Mathieu.
+- **Déploiement cloud :** **non obligatoire**. Consigne étape 2 : « environnement cible (**simulé localement ou réel**) ». Docker local = déploiement simulé conforme. HF/Heroku/Cloud Run = outils optionnels listés.
+- **Validation :**
+  - `uv run pytest tests/test_api.py` → 7 passed.
+  - Docker slim OK (2026-11-21) : `docker build -t credit-scoring-api` + run `-p 8001:8000` → `/health` OK, `/predict` → proba≈0.291 / ACCORD.
+- **Conséquences :** suite = GitHub Actions (pytest + `docker build`) ; drift Evidently ; opti.
+
 
 ---
 
