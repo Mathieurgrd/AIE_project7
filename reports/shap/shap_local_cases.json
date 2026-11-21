@@ -1,0 +1,35 @@
+[
+  {
+    "case": "refuse_high_risk",
+    "sk_id_curr": 156227,
+    "y_true": 1,
+    "proba_default": 0.9647686627159552,
+    "threshold": 0.52,
+    "decision": "REFUS",
+    "top_feature": "EXT_SOURCE_2",
+    "top_shap": 1.06383960947796,
+    "waterfall": "reports\\shap\\shap_waterfall_refuse_high_risk.png"
+  },
+  {
+    "case": "accept_low_risk",
+    "sk_id_curr": 249554,
+    "y_true": 0,
+    "proba_default": 0.012135010960586109,
+    "threshold": 0.52,
+    "decision": "ACCORD",
+    "top_feature": "EXT_SOURCE_2",
+    "top_shap": -0.6892214512018174,
+    "waterfall": "reports\\shap\\shap_waterfall_accept_low_risk.png"
+  },
+  {
+    "case": "near_threshold",
+    "sk_id_curr": 324321,
+    "y_true": 0,
+    "proba_default": 0.5200006656837527,
+    "threshold": 0.52,
+    "decision": "REFUS",
+    "top_feature": "CODE_GENDER",
+    "top_shap": 0.2242030751799815,
+    "waterfall": "reports\\shap\\shap_waterfall_near_threshold.png"
+  }
+]

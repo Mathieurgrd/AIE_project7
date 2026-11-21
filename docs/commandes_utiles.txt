@@ -1,0 +1,283 @@
+================================================================================
+COMMANDES UTILES — Projet 7 « Prêt à dépenser »
+================================================================================
+Shell : PowerShell
+
+Toujours commencer par se placer à la racine du projet :
+
+  cd "c:\Users\Mathieu\Desktop\Formation\Projet 7"
+
+Document vivant : à mettre à jour quand une nouvelle commande devient utile.
+Compléments : mlflow_cas_usage.txt (racine), docs/Optuna.md, docs/demarches_projet.txt
+
+
+--------------------------------------------------------------------------------
+0. ENVIRONNEMENT (outil uv)
+--------------------------------------------------------------------------------
+Installer ou synchroniser les dépendances du projet (fichier uv.lock) :
+
+  uv sync
+
+Lancer une commande dans l’environnement isolé du projet (à préférer toujours) :
+
+  uv run <commande>
+
+Ouvrir un interpréteur Python dans cet environnement :
+
+  uv run python
+
+
+--------------------------------------------------------------------------------
+1. INTERFACE WEB MLFLOW (suivi des expérimentations)
+--------------------------------------------------------------------------------
+À quoi ça sert :
+  Afficher dans le navigateur tous les essais (runs) : paramètres, métriques,
+  modèles, artefacts (courbes de coût, figures SHAP, etc.).
+
+Commande :
+
+  uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+
+Puis ouvrir : http://127.0.0.1:5000
+
+Impact :
+  Aucun nouvel entraînement. Lecture seule de la base sqlite mlflow.db.
+  Expérience principale : credit-scoring-fe_v1
+
+Si le port 5000 est occupé :
+
+  uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
+
+
+--------------------------------------------------------------------------------
+2. CONSTRUCTION DU JEU DE DONNÉES (feature engineering fe_v1)
+--------------------------------------------------------------------------------
+Script : src/build_dataset.py
+
+À quoi ça sert :
+  Charger les fichiers bruts Home Credit, fabriquer les variables
+  (agrégations multi-tables), produire train / valid / test en parquet.
+
+Commande :
+
+  uv run python -m src.build_dataset
+
+Sans la table bureau_balance (plus rapide, moins de variables) :
+
+  uv run python -m src.build_dataset --no-bb
+
+Impact :
+  Réécrit data/interim/ et data/processed/ + meta.json
+  Ajoute une entrée dans choix_techniques.txt
+  Ne crée PAS de run MLflow à lui seul
+  À relancer seulement si on change le feature engineering
+
+
+--------------------------------------------------------------------------------
+3. VALIDATION CROISÉE MULTI-MODÈLES + SEUIL MÉTIER
+--------------------------------------------------------------------------------
+Script : src/run_cv_baselines.py
+
+À quoi ça sert :
+  Comparer de façon robuste quatre familles de modèles sous le même protocole :
+  validation croisée stratifiée (5 plis), coût métier 10×faux négatifs + 1×faux
+  positifs, optimisation du seuil sur les probabilités hors pli (out-of-fold),
+  puis évaluation sur le jeu de validation holdout.
+  Produit aussi la courbe « coût versus seuil » (artefact MLflow).
+
+Commande (tous les modèles) :
+
+  uv run python -m src.run_cv_baselines
+
+Sous-ensemble (exemple LightGBM et XGBoost seulement) :
+
+  uv run python -m src.run_cv_baselines --models lightgbm xgboost
+
+Runs MLflow créés (un par modèle, statut en principe « terminé » si tout va bien) :
+  - logreg_cv5_seuil_opt_fe_v1
+  - random_forest_cv5_seuil_opt_fe_v1
+  - lightgbm_cv5_seuil_opt_fe_v1
+  - xgboost_cv5_seuil_opt_fe_v1
+
+Impact :
+  Long (surtout Random Forest) : plusieurs minutes à dizaines de minutes
+  Remplit l’expérience credit-scoring-fe_v1 de runs de comparaison
+  Écrit reports/cv_threshold_summary.csv
+  Artefacts par run : threshold/threshold_cost_curve.png et .csv
+  Hyperparamètres = baselines (pas encore Optuna)
+
+
+--------------------------------------------------------------------------------
+4. OPTIMISATION DES HYPERPARAMÈTRES OPTUNA (LightGBM) + SEUIL SUR VALIDATION
+--------------------------------------------------------------------------------
+Script : src/run_optuna_lgbm.py
+
+À quoi ça sert :
+  À partir du champion de l’étape précédente (LightGBM), chercher de meilleurs
+  hyperparamètres avec Optuna (objectif : maximiser l’aire sous la courbe ROC
+  en validation croisée), puis recalculer le seuil métier optimal sur le jeu
+  de validation. C’est le modèle « champion » du projet.
+
+Commande :
+
+  uv run python -m src.run_optuna_lgbm --n-trials 25
+
+Runs MLflow créés :
+  - Parent : lightgbm_optuna_fe_v1
+  - Enfants nestés : trial_000, trial_001, … (un par essai Optuna)
+
+Impact :
+  Long (de l’ordre de 10 minutes ou plus selon la machine)
+  Écrit reports/optuna_lgbm_best.json et reports/optuna_lgbm_trials.csv
+  Définit le seuil métier retenu (environ 0.52) et les métriques champion
+  (aire sous la courbe validation environ 0.786, coût métier environ 29962)
+  Artefact courbe seuil aussi sous Artifacts → threshold/
+
+
+--------------------------------------------------------------------------------
+5. SEUIL MÉTIER SEUL SUR LIGHTGBM BASELINE (SANS OPTUNA)
+--------------------------------------------------------------------------------
+Script : src/run_threshold_on_valid.py
+
+À quoi ça sert :
+  Isoler l’effet du seuil : entraîner un LightGBM avec les hyperparamètres
+  de baseline (ceux de la validation croisée, pas Optuna), balayer les seuils
+  sur le jeu de validation, logger le minimum de coût.
+  Utile pédagogiquement pour voir que le minimum peut être à 0.5.
+
+Commande :
+
+  uv run python -m src.run_threshold_on_valid
+
+Run MLflow créé :
+  - lightgbm_seuil_valid_opt_fe_v1
+
+Impact :
+  Court (quelques secondes à une minute)
+  Écrit reports/lgbm_threshold_curve_valid.csv
+  Ne remplace pas le champion Optuna
+
+
+--------------------------------------------------------------------------------
+6. EXPLICABILITÉ SHAP (IMPORTANCE GLOBALE ET LOCALE)
+--------------------------------------------------------------------------------
+Script : src/run_shap_lgbm.py
+
+À quoi ça sert :
+  Expliquer le champion Optuna : quelles variables poussent le score
+  en moyenne (global), et pourquoi tel client a tel score (local, waterfalls).
+  Exigence de la mission pour le chargé d’études.
+
+Commande :
+
+  uv run python -m src.run_shap_lgbm
+
+Prérequis :
+  reports/optuna_lgbm_best.json doit exister (lancer d’abord l’étape Optuna)
+
+Run MLflow créé :
+  - lightgbm_shap_fe_v1
+
+Impact :
+  Quelques dizaines de secondes à quelques minutes
+  Écrit reports/shap/ (summary, barres, waterfalls, fichiers CSV, cas locaux)
+  Sauvegarde aussi models/champion_lgbm_optuna.txt
+  N’améliore pas l’aire sous la courbe : purement explicabilité
+
+
+--------------------------------------------------------------------------------
+7. ENREGISTREMENT DANS LE MODEL REGISTRY (+ TEST DE CHARGEMENT)
+--------------------------------------------------------------------------------
+Script : src/run_register_champion.py
+
+À quoi ça sert :
+  Versionner le champion dans le registre MLflow sous le nom
+  credit-scoring-lgbm, le passer en Staging, poser l’alias « champion »,
+  et vérifier qu’on peut recharger le modèle et prédire (smoke test local).
+  Prépare le serving HTTP.
+
+Commande :
+
+  uv run python -m src.run_register_champion
+
+Runs MLflow créés :
+  - lightgbm_register_fe_v1
+    (il peut y en avoir deux dans l’historique : une première tentative
+     en échec sur le schéma des catégories, puis une version corrigée
+     avec le wrapper pyfunc — garder la version réussie / la plus récente)
+
+Impact :
+  Court
+  Crée ou met à jour le modèle enregistré credit-scoring-lgbm
+    (version Staging + alias @champion)
+  Écrit reports/registry_champion.json
+  Les métriques valid_auc / coût affichées sont celles du champion Optuna
+  (recopiées), pas un nouvel entraînement « meilleur »
+
+
+--------------------------------------------------------------------------------
+8. SERVING MLFLOW (API HTTP DE PRÉDICTION)
+--------------------------------------------------------------------------------
+À quoi ça sert :
+  Exposer le modèle enregistré derrière une adresse HTTP : on envoie les
+  variables d’un client, on reçoit une probabilité de défaut.
+  Le seuil métier (0.52) s’applique ensuite côté application
+  (si probabilité >= 0.52 alors refus, sinon accord).
+
+Commande (laisser tourner dans un terminal dédié) :
+
+  uv run mlflow models serve -m "models:/credit-scoring-lgbm@champion" --port 5001 --env-manager local --host 127.0.0.1
+
+Endpoint de prédiction :
+  POST http://127.0.0.1:5001/invocations
+  Corps : JSON au format dataframe_split (features du client)
+
+Impact :
+  Aucun nouvel enregistrement MLflow de run d’entraînement
+  Processus serveur actif tant que le terminal reste ouvert
+  Prérequis : avoir réussi l’étape Model Registry
+
+
+--------------------------------------------------------------------------------
+9. NOTEBOOKS
+--------------------------------------------------------------------------------
+  uv run jupyter lab
+  uv run jupyter notebook
+
+Notebooks du projet :
+  notebooks/01_eda_application_train.ipynb
+  notebooks/02_feature_engineering.ipynb
+  notebooks/03_modelisation_mlflow.ipynb
+
+
+--------------------------------------------------------------------------------
+10. ORDRE LOGIQUE RECOMMANDÉ (SI ON REPART DE ZÉRO)
+--------------------------------------------------------------------------------
+  1) uv sync
+  2) uv run python -m src.build_dataset
+  3) uv run python -m src.run_cv_baselines
+  4) uv run python -m src.run_optuna_lgbm --n-trials 25
+  5) uv run python -m src.run_shap_lgbm
+  6) uv run python -m src.run_register_champion
+  7) (option) serving + interface MLflow
+
+L’étape « seuil seul » (run_threshold_on_valid) est optionnelle / pédagogique.
+Elle n’est pas obligatoire si Optuna a déjà produit le seuil sur validation.
+
+
+--------------------------------------------------------------------------------
+11. DOCUMENTATION À RELIRE (PAS DES COMMANDES)
+--------------------------------------------------------------------------------
+  docs/HANDOFF.md              — état du projet et prochaine étape
+  docs/Roadmap.md              — jalons et conformité
+  docs/Decision.md             — décisions techniques numérotées
+  docs/Optuna.md               — qu’est-ce qu’Optuna
+  docs/demarches_projet.txt    — récit technique et métier bout-en-bout
+  docs/commandes_utiles.txt    — CE FICHIER
+  consigne.txt                 — énoncé OpenClassrooms
+  mlflow_cas_usage.txt         — pédagogie MLflow (racine)
+  notes.txt                    — notes + glossaire des métriques MLflow
+
+================================================================================
+FIN
+================================================================================

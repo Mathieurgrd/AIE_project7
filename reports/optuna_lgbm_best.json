@@ -1,0 +1,22 @@
+{
+  "fe_version": "fe_v1",
+  "best_trial": 21,
+  "best_cv_auc_search": 0.7805368717062892,
+  "final_cv_auc_mean": 0.7817496052245536,
+  "final_cv_auc_std": 0.0017204947625498001,
+  "params": {
+    "n_estimators": 550,
+    "learning_rate": 0.02138410090138534,
+    "num_leaves": 47,
+    "min_child_samples": 115,
+    "subsample": 0.6978469039995722,
+    "colsample_bytree": 0.6744854749430786,
+    "reg_lambda": 1.0547039332919714
+  },
+  "threshold_opt_valid": 0.52,
+  "valid_auc": 0.7857506026568162,
+  "valid_business_cost_at_0.5": 30073.0,
+  "valid_business_cost_at_opt": 29962.0,
+  "fn_cost": 10,
+  "fp_cost": 1
+}
