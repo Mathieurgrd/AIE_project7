@@ -14,8 +14,8 @@ Date : **2026-11-21**
 | Partie 1 (FE → Optuna → SHAP → Registry) | **Fait** |
 | Git lean + push branche `EDA` | **Fait** (D-019) — `main` distant encore = commit initial |
 | API FastAPI + validation + tests | **Fait** (D-018) — 7 tests OK |
-| Dockerfile | **Fait** (non validé Docker Desktop chez Mathieu) |
-| GitHub Actions CI/CD | **À faire** |
+| Dockerfile | **Fait** (validé local port 8001) |
+| GitHub Actions CI/CD | **Fait** (D-020) — vérifier run vert sur le repo |
 | Drift / logs analyse | Base log JSONL OK ; analyse Evidently **à faire** |
 | Optimisation ONNX / profiling | **À faire** |
 
@@ -33,11 +33,10 @@ uv run uvicorn api.main:app --host 127.0.0.1 --port 8000
 uv run pytest tests/test_api.py -q
 ```
 
-## Prochaine étape (besoin Mathieu ou suite agent)
-1. Valider **Docker Desktop** + `docker build -t credit-scoring-api .`
-2. Choisir default branch GitHub (`main` vs `EDA`) / PR
-3. Ajouter **GitHub Actions** (test → build image)
-4. Notebook/script **drift** (Evidently) sur `logs/predictions.jsonl`
+## Prochaine étape
+1. Vérifier l’onglet **Actions** sur GitHub (run `CI API` vert)
+2. Script/notebook **drift** (Evidently) — étape 3 consigne
+3. (Option) merger `EDA` → `main` ; profiling / ONNX — étape 4
 
 ## Contraintes agent
 - Consigne + Roadmap/Decision à jour ; **NON CONFORME** si exigence manquante.

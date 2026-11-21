@@ -248,7 +248,20 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 - **Validation :**
   - `uv run pytest tests/test_api.py` → 7 passed.
   - Docker slim OK (2026-11-21) : `docker build -t credit-scoring-api` + run `-p 8001:8000` → `/health` OK, `/predict` → proba≈0.291 / ACCORD.
-- **Conséquences :** suite = GitHub Actions (pytest + `docker build`) ; drift Evidently ; opti.
+- **Conséquences :** CI GitHub Actions ajoutée (D-020) ; suite = drift Evidently ; opti.
+
+---
+
+## D-020 — GitHub Actions CI/CD (partie 2 étape 2)
+
+- **Statut :** Accepté (2026-11-22)
+- **Contexte :** Consigne — pipeline qui teste, build l’image Docker, déploie (local simulé OK).
+- **Décision :** workflow `.github/workflows/ci.yml` sur push/PR (`EDA`, `main`) :
+  1. **test** : `uv sync` + `pytest tests/test_api.py`
+  2. **build** : `docker build` (image slim) + smoke `/health` + `/model/info`
+  3. **deploy-simulated** : charge l’artifact image (`docker load`) — pas de cloud
+- **Pourquoi pas de push registry cloud :** consigne autorise « simulé localement » ; pas de secrets GHCR requis pour le livrable.
+- **Conséquences :** run visible dans l’onglet Actions du repo ; suite = drift (étape 3).
 
 
 ---
@@ -289,3 +302,4 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 | D-017 | Registry + serving |
 | D-018 | API FastAPI + Docker |
 | D-019 | Git lean (exclure data/mlruns) |
+| D-020 | GitHub Actions CI/CD |

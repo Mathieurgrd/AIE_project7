@@ -291,6 +291,21 @@ Note consigne : déploiement cloud NON obligatoire — « simulé localement ou 
 
 
 --------------------------------------------------------------------------------
+10.bis CI/CD GITHUB ACTIONS
+--------------------------------------------------------------------------------
+Fichier : .github/workflows/ci.yml
+
+À chaque push / PR sur EDA ou main :
+  1) pytest API
+  2) docker build + smoke /health
+  3) artifact image (déploiement simulé)
+
+Voir le run : https://github.com/Mathieurgrd/AIE_project7/actions
+
+Si Actions désactivées sur le repo : Settings → Actions → Allow actions.
+
+
+--------------------------------------------------------------------------------
 11. ORDRE LOGIQUE RECOMMANDÉ (SI ON REPART DE ZÉRO)
 --------------------------------------------------------------------------------
   1) uv sync

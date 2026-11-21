@@ -1,7 +1,7 @@
 # Roadmap — Projet 7 « Prêt à dépenser »
 
 Document vivant : à mettre à jour au fur et à mesure.  
-Dernière màj : **2026-11-21** (partie 2 — Git lean + API FastAPI)
+Dernière màj : **2026-11-22** (partie 2 — GitHub Actions CI/CD)
 
 ## Où en est-on ? (résumé)
 
@@ -24,11 +24,11 @@ Repère consigne — partie 2 :
 | Bloc | Statut |
 |------|--------|
 | Étape 1 — Git public structuré | **Partiel** (branche `EDA` poussée, sans `data/`/`mlruns`) — PR/`main` + polish README ouverts |
-| Étape 2 — API + Docker + tests | **Fait** localement (D-018) — CI/CD GitHub Actions **à faire** ; Docker build à valider sur la machine |
+| Étape 2 — API + Docker + tests + CI/CD | **Fait** (D-018 API/Docker, D-020 Actions) — vérifier le run vert sur GitHub Actions |
 | Étape 3 — Logs + drift | **Partiel** (logs JSONL API) — analyse Evidently **à faire** |
 | Étape 4 — Optimisation post-déploiement | **À faire** |
 
-**Prochaine étape recommandée :** GitHub Actions (pytest + docker build) ; valider Docker Desktop ; script drift.
+**Prochaine étape recommandée :** vérifier le run Actions vert ; script/notebook drift (Evidently).
 
 ---
 
