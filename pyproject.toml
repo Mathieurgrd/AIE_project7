@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "fastapi>=0.142.2",
+    "httpx>=0.28.1",
     "imbalanced-learn>=0.14.2",
     "ipykernel>=7.4.0",
     "jupyter>=1.1.1",
@@ -16,8 +18,11 @@ dependencies = [
     "optuna>=5.0.0",
     "pandas>=3.0.6",
     "pyarrow>=25.0.1",
+    "pydantic>=2.13.5",
+    "pytest>=9.2.0",
     "scikit-learn>=1.9.1",
     "seaborn>=0.13.2",
     "shap>=0.51.0",
+    "uvicorn>=0.54.0",
     "xgboost>=3.2.0",
 ]

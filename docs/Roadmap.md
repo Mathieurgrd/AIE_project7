@@ -1,14 +1,14 @@
 # Roadmap — Projet 7 « Prêt à dépenser »
 
 Document vivant : à mettre à jour au fur et à mesure.  
-Dernière màj : **2026-10-09** (SHAP + Registry + serving)
+Dernière màj : **2026-11-21** (partie 2 — Git lean + API FastAPI)
 
 ## Où en est-on ? (résumé)
 
-**Mission technique principale couverte** : FE + MLflow + CV + Optuna + seuil + **SHAP** + **Registry/serving**.  
-Reste : polish livrable (README, notebooks) ; options fe_v2 / MLP / équité CODE_GENDER.
+**Partie 1 couverte** : FE + MLflow + CV + Optuna + seuil + SHAP + Registry/serving.  
+**Partie 2 en cours** : Git public lean (**fait** branche `EDA`) + API FastAPI/Docker/tests (**fait**) ; CI/CD + drift + opti **à faire**.
 
-Repère consigne OpenClassrooms :
+Repère consigne OpenClassrooms — partie 1 :
 
 | Bloc consigne | Statut |
 |---------------|--------|
@@ -19,7 +19,16 @@ Repère consigne OpenClassrooms :
 | Mission : importance globale/locale | **Fait** (SHAP, D-016) |
 | Mission : Model Registry + serving | **Fait** (D-017, HTTP testé) |
 
-**Prochaine étape recommandée :** README + relecture figures SHAP ; récit dans `docs/demarches_projet.txt`.
+Repère consigne — partie 2 :
+
+| Bloc | Statut |
+|------|--------|
+| Étape 1 — Git public structuré | **Partiel** (branche `EDA` poussée, sans `data/`/`mlruns`) — PR/`main` + polish README ouverts |
+| Étape 2 — API + Docker + tests | **Fait** localement (D-018) — CI/CD GitHub Actions **à faire** ; Docker build à valider sur la machine |
+| Étape 3 — Logs + drift | **Partiel** (logs JSONL API) — analyse Evidently **à faire** |
+| Étape 4 — Optimisation post-déploiement | **À faire** |
+
+**Prochaine étape recommandée :** GitHub Actions (pytest + docker build) ; valider Docker Desktop ; script drift.
 
 ---
 

@@ -230,6 +230,37 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 
 ---
 
+## D-018 — API FastAPI de scoring (partie 2)
+
+- **Statut :** Accepté (implémenté 2026-11-21)
+- **Contexte :** Consigne partie 2 étape 2 — exposer le modèle via une API, charger le modèle une seule fois, valider les entrées, documenter (Swagger).
+- **Décision :**
+  - Framework **FastAPI** (Swagger natif, typage Pydantic, adapté CI/CD) plutôt que Gradio.
+  - Réponse = `{proba_default, threshold, decision, latency_ms}` avec seuil\* **0.52** appliqué côté API (`proba >= 0.52` → REFUS).
+  - Booster LightGBM chargé dans le **lifespan** FastAPI (`api/model_runtime.py`) — une fois au démarrage.
+  - Schéma features versionné : `reports/api_feature_schema.json` (+ échantillon `reports/api_sample_client.json`).
+  - Validation : champs manquants, types incorrects, plages invalides (âge < 0, revenu ≤ 0, …) → HTTP 422.
+  - Logs JSONL locaux : `logs/predictions.jsonl` (base pour étape 3 drift).
+  - Conteneur : `Dockerfile` + `.dockerignore` (sans `data/` ni `mlruns/`).
+- **Pourquoi pas Gradio :** moins adapté aux tests Pytest / pipeline CI ; FastAPI = contrat HTTP clair pour un chargé d’études / SI.
+- **Validation :** `uv run pytest tests/test_api.py` → 7 passed.
+- **Conséquences :** suite = GitHub Actions (CI) + drift Evidently + opti ; déploiement cloud à valider avec Mathieu.
+
+---
+
+## D-019 — Dépôt Git « lean » (partie 2 étape 1, partiel)
+
+- **Statut :** Accepté (2026-11-21)
+- **Contexte :** Push GitHub échoué (HTTP 408) — pack ~860 Mo (`data/raw`, `mlruns`, …).
+- **Décision :**
+  - Enrichir `.gitignore` : `data/`, `mlruns/`, `mlflow.db`, `logs/`, archives zip/rar.
+  - Réécrire l’historique local (reset sur commit initial + un commit propre).
+  - Pousser la branche `EDA` : https://github.com/Mathieurgrd/AIE_project7/tree/EDA
+- **Pourquoi :** GitHub coupe les pushes trop lourds ; les CSV Home Credit se régénèrent / se retéléchargent ; MLflow se rejoue.
+- **Reste ouvert :** dépôt encore partiellement « à ranger » (PR vers `main`, README d’exécution, rendre le repo clairement public / default branch).
+
+---
+
 ## Index rapide
 
 | Décision | Thème |
@@ -251,3 +282,5 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 | D-015 | Optuna LightGBM |
 | D-016 | SHAP explicabilité |
 | D-017 | Registry + serving |
+| D-018 | API FastAPI + Docker |
+| D-019 | Git lean (exclure data/mlruns) |

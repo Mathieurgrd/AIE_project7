@@ -251,7 +251,39 @@ Notebooks du projet :
 
 
 --------------------------------------------------------------------------------
-10. ORDRE LOGIQUE RECOMMANDÉ (SI ON REPART DE ZÉRO)
+10. API FASTAPI (partie 2)
+--------------------------------------------------------------------------------
+À quoi ça sert :
+  Exposer le champion LightGBM en HTTP : proba de défaut + décision
+  (seuil métier 0.52). Documentation interactive Swagger.
+
+Lancer l’API (terminal dédié) :
+
+  uv run uvicorn api.main:app --host 127.0.0.1 --port 8000
+
+Puis ouvrir : http://127.0.0.1:8000/docs
+
+Tester une prédiction (exemple) :
+
+  uv run python -c "import json,urllib.request; body=open('reports/api_sample_client.json','rb').read(); req=urllib.request.Request('http://127.0.0.1:8000/predict',data=body,headers={'Content-Type':'application/json'},method='POST'); print(urllib.request.urlopen(req).read().decode())"
+
+Tests automatisés :
+
+  uv run pytest tests/test_api.py -q
+
+Docker (si Docker Desktop installé) :
+
+  docker build -t credit-scoring-api .
+  docker run --rm -p 8000:8000 credit-scoring-api
+
+Impact :
+  Charge le modèle UNE fois au démarrage (lifespan).
+  Écrit des logs JSONL dans logs/predictions.jsonl (ignoré par Git).
+  Ne dépend PAS de mlflow.db pour prédire (lit models/champion_lgbm_optuna.txt).
+
+
+--------------------------------------------------------------------------------
+11. ORDRE LOGIQUE RECOMMANDÉ (SI ON REPART DE ZÉRO)
 --------------------------------------------------------------------------------
   1) uv sync
   2) uv run python -m src.build_dataset
@@ -266,7 +298,7 @@ Elle n’est pas obligatoire si Optuna a déjà produit le seuil sur validation.
 
 
 --------------------------------------------------------------------------------
-11. DOCUMENTATION À RELIRE (PAS DES COMMANDES)
+12. DOCUMENTATION À RELIRE (PAS DES COMMANDES)
 --------------------------------------------------------------------------------
   docs/HANDOFF.md              — état du projet et prochaine étape
   docs/Roadmap.md              — jalons et conformité

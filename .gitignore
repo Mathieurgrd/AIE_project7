@@ -15,6 +15,9 @@ mlruns/
 mlflow.db
 mlflow.db-*
 
+# Logs API production (locaux ; régénérés à l'usage)
+logs/
+
 # Environnement / caches locaux
 .venv/
 .cursor/
