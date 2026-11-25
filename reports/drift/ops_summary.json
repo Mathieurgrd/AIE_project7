@@ -1,0 +1,45 @@
+{
+  "source": "simulation valid (n=500, inject_drift=True)",
+  "drift": {
+    "html": "reports/drift/drift_report.html",
+    "json": "reports/drift/drift_report.json",
+    "n_reference": 2000,
+    "n_current": 500,
+    "features_compared": [
+      "EXT_SOURCE_1",
+      "EXT_SOURCE_2",
+      "EXT_SOURCE_3",
+      "AMT_INCOME_TOTAL",
+      "AMT_CREDIT",
+      "AMT_ANNUITY",
+      "AGE_YEARS",
+      "EMPLOYMENT_YEARS",
+      "CREDIT_INCOME_RATIO",
+      "ANNUITY_INCOME_RATIO",
+      "CREDIT_GOODS_RATIO",
+      "LATE_RATE",
+      "CNT_CHILDREN"
+    ],
+    "n_drifted_columns": 6.0,
+    "share_of_drifted_columns": 0.46153846153846156,
+    "drifted_features_preview": [
+      "EXT_SOURCE_1",
+      "EXT_SOURCE_2",
+      "EXT_SOURCE_3",
+      "AMT_INCOME_TOTAL",
+      "AMT_CREDIT",
+      "LATE_RATE"
+    ]
+  },
+  "ops": {
+    "n_calls": 8,
+    "n_ok": 3,
+    "n_error_or_validation": 5,
+    "error_rate": 0.625,
+    "latency_ms_mean": 62.75797494163271,
+    "latency_ms_p95": 75.57213966792915,
+    "latency_ms_max": 76.6824996098876,
+    "alert_high_error_rate": true,
+    "alert_high_latency_p95": false
+  }
+}

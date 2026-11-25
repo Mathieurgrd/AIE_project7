@@ -62,11 +62,28 @@ app = FastAPI(
 
 @app.exception_handler(InputValidationError)
 async def input_validation_handler(_request: Request, exc: InputValidationError):
+    append_prediction_log(
+        {
+            "endpoint": "/predict",
+            "status": "validation_error",
+            "http_status": 422,
+            "error_codes": [e.get("code") for e in exc.errors if isinstance(e, dict)],
+            "n_errors": len(exc.errors),
+        }
+    )
     return JSONResponse(status_code=422, content={"detail": exc.errors})
 
 
 @app.exception_handler(RequestValidationError)
 async def pydantic_validation_handler(_request: Request, exc: RequestValidationError):
+    append_prediction_log(
+        {
+            "endpoint": "/predict",
+            "status": "validation_error",
+            "http_status": 422,
+            "error": "request_validation_error",
+        }
+    )
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
@@ -101,12 +118,15 @@ def predict(payload: PredictRequest) -> PredictResponse:
         append_prediction_log(
             {
                 "endpoint": "/predict",
+                "status": "ok",
+                "http_status": 200,
                 "n_features_received": len(payload.features),
+                # Inputs/outputs complets pour drift (consigne étape 3).
+                "features": features,
                 "proba_default": proba,
                 "threshold": runtime.threshold,
                 "decision": decision,
                 "latency_ms": latency_ms,
-                "status": "ok",
             }
         )
         return PredictResponse(

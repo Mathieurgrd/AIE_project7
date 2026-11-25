@@ -291,6 +291,26 @@ Note consigne : déploiement cloud NON obligatoire — « simulé localement ou 
 
 
 --------------------------------------------------------------------------------
+10.ter DRIFT + LOGS (partie 2 étape 3)
+--------------------------------------------------------------------------------
+Les appels API écrivent logs/predictions.jsonl (features, proba, décision, latence).
+Ce dossier est ignoré par Git.
+
+Lancer l’analyse (PoC local Evidently) :
+
+  uv run python -m src.run_drift_analysis --simulate-n 500 --inject-drift
+
+Sans drift artificiel (si assez de vrais logs) :
+
+  uv run python -m src.run_drift_analysis
+
+Artefacts :
+  reports/drift/drift_report.html   — rapport Evidently
+  reports/drift/drift_summary.md    — synthèse mentor
+  reports/drift/ops_summary.json    — métriques ops
+
+
+--------------------------------------------------------------------------------
 10.bis CI/CD GITHUB ACTIONS
 --------------------------------------------------------------------------------
 Fichier : .github/workflows/ci.yml

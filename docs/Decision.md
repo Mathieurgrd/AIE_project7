@@ -263,6 +263,23 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 - **Pourquoi pas de push registry cloud :** consigne autorise « simulé localement » ; pas de secrets GHCR requis pour le livrable.
 - **Conséquences :** run visible dans l’onglet Actions du repo ; suite = drift (étape 3).
 
+---
+
+## D-021 — Logs production + drift Evidently (partie 2 étape 3)
+
+- **Statut :** Accepté (2026-11-25)
+- **Contexte :** Consigne — stocker inputs/outputs/latence ; détecter data drift + anomalies ops ; PoC local OK.
+- **Décision :**
+  - Enrichir `logs/predictions.jsonl` : `features` (inputs), `proba_default` / `decision` (outputs), `latency_ms`, erreurs 422/500.
+  - Script `src/run_drift_analysis.py` :
+    - référence = échantillon **train** fe_v1 ;
+    - courant = logs API si assez riches, sinon **simulation valid** (`--simulate-n`, option `--inject-drift`) ;
+    - Evidently `DataDriftPreset` → `reports/drift/drift_report.html` + résumé Markdown/JSON ;
+    - métriques ops : taux d’erreur, latence mean/p95, alertes simples.
+  - Focus sur ~13 features métier (EXT_SOURCE_*, montants, ratios, LATE_RATE…) pour un rapport lisible.
+- **Pourquoi Evidently :** cité par la consigne ; standard pour drift distributionnel.
+- **Validation :** run local `--simulate-n 500 --inject-drift` → ~46 % colonnes driftées (signal artificiel attendu) ; pytest API toujours OK.
+- **Conséquences :** suite = étape 4 optimisation (profiling / ONNX).
 
 ---
 
@@ -303,3 +320,4 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 | D-018 | API FastAPI + Docker |
 | D-019 | Git lean (exclure data/mlruns) |
 | D-020 | GitHub Actions CI/CD |
+| D-021 | Logs + drift Evidently |

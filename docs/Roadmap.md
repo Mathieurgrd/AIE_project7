@@ -1,12 +1,12 @@
 # Roadmap — Projet 7 « Prêt à dépenser »
 
 Document vivant : à mettre à jour au fur et à mesure.  
-Dernière màj : **2026-11-22** (partie 2 — GitHub Actions CI/CD)
+Dernière màj : **2026-11-25** (partie 2 — drift Evidently)
 
 ## Où en est-on ? (résumé)
 
 **Partie 1 couverte** : FE + MLflow + CV + Optuna + seuil + SHAP + Registry/serving.  
-**Partie 2 en cours** : Git public lean (**fait** branche `EDA`) + API FastAPI/Docker/tests (**fait**) ; CI/CD + drift + opti **à faire**.
+**Partie 2** : Git + API/Docker/CI **faits** ; **drift/logs faits** (D-021) ; optimisation post-déploiement **à faire**.
 
 Repère consigne OpenClassrooms — partie 1 :
 
@@ -24,11 +24,11 @@ Repère consigne — partie 2 :
 | Bloc | Statut |
 |------|--------|
 | Étape 1 — Git public structuré | **Partiel** (branche `EDA` poussée, sans `data/`/`mlruns`) — PR/`main` + polish README ouverts |
-| Étape 2 — API + Docker + tests + CI/CD | **Fait** (D-018 API/Docker, D-020 Actions) — vérifier le run vert sur GitHub Actions |
-| Étape 3 — Logs + drift | **Partiel** (logs JSONL API) — analyse Evidently **à faire** |
+| Étape 2 — API + Docker + tests + CI/CD | **Fait** (D-018, D-020) |
+| Étape 3 — Logs + drift | **Fait** (D-021) — `src/run_drift_analysis.py` + `reports/drift/` |
 | Étape 4 — Optimisation post-déploiement | **À faire** |
 
-**Prochaine étape recommandée :** vérifier le run Actions vert ; script/notebook drift (Evidently).
+**Prochaine étape recommandée :** profiling / optimisation inférence (étape 4, ex. ONNX) + courte note de résultats.
 
 ---
 
