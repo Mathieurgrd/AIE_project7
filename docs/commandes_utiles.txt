@@ -284,8 +284,8 @@ Docker (Docker Desktop doit être démarré — icône baleine active) :
 Impact :
   Charge le modèle UNE fois au démarrage (lifespan).
   Écrit des logs JSONL dans logs/predictions.jsonl (ignoré par Git).
-  Ne dépend PAS de mlflow.db pour prédire (lit models/champion_lgbm_optuna.txt).
-  Image basée sur requirements-api.txt (légère), pas sur tout le stack notebooks/MLflow.
+  Ne dépend PAS de mlflow.db pour prédire (lit models/champion_lgbm_optuna.onnx).
+  Image basée sur requirements-api.txt (onnxruntime, sans LightGBM).
 
 Note consigne : déploiement cloud NON obligatoire — « simulé localement ou réel » suffit.
 
@@ -308,6 +308,32 @@ Artefacts :
   reports/drift/drift_report.html   — rapport Evidently
   reports/drift/drift_summary.md    — synthèse mentor
   reports/drift/ops_summary.json    — métriques ops
+
+
+--------------------------------------------------------------------------------
+10.quater OPTIMISATION INFÉRENCE ONNX (partie 2 étape 4)
+--------------------------------------------------------------------------------
+À quoi ça sert :
+  Profiling (cProfile) + export ONNX du champion + mesure latence / fidélité.
+  L’API utilise ONNX Runtime par défaut (beaucoup plus rapide que pandas+LightGBM).
+
+Relancer le benchmark / ré-exporter :
+
+  uv run python -m src.run_optimize_inference
+
+Artefacts :
+  models/champion_lgbm_optuna.onnx
+  models/champion_lgbm_cat_maps.json
+  reports/optimization/optimization_report.md
+  reports/optimization/optimization_metrics.json
+
+Forcer l’ancien runtime LightGBM (debug) :
+
+  set SCORING_RUNTIME=lgbm
+  uv run uvicorn api.main:app --host 127.0.0.1 --port 8000
+
+Impact mesuré (ordre de grandeur) :
+  ~52 ms → ~0.25 ms par prédiction single-row ; AUC inchangée ; 0 flip @ seuil 0.52.
 
 
 --------------------------------------------------------------------------------

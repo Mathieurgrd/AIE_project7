@@ -38,6 +38,7 @@ def test_model_info(client: TestClient):
     body = r.json()
     assert body["n_features"] == 218
     assert body["threshold_opt_valid"] == 0.52
+    assert body["scoring_backend"] in {"onnx", "lgbm"}
 
 
 def test_predict_ok(client: TestClient, sample_features: dict):

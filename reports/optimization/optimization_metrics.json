@@ -1,0 +1,22 @@
+{
+  "backend_baseline": "lightgbm+pandas (API historique)",
+  "backend_optimized": "onnxruntime + encodage numpy (cats \u2192 codes)",
+  "latency_ms_mean_baseline": 52.10791200021049,
+  "latency_ms_mean_onnx": 0.24601000011898577,
+  "speedup_x": 211.81217013539228,
+  "sample_proba_baseline": 0.29111669301741194,
+  "sample_proba_onnx": 0.29111671447753906,
+  "sample_abs_delta": 2.1460127119787842e-08,
+  "onnx_path": "models\\champion_lgbm_optuna.onnx",
+  "onnx_size_mb": 3.812031,
+  "fidelity": {
+    "valid_available": true,
+    "n_rows": 2000,
+    "auc_lgbm_pandas": 0.7690239433297031,
+    "auc_onnx": 0.7690239433297031,
+    "max_abs_proba_delta": 0.002623481363894481,
+    "mean_abs_proba_delta": 2.3133026266791615e-06
+  },
+  "bottleneck": "cProfile : construction/casts pandas + lightgbm._data_from_pandas dominent le temps ; le scoring arbres est secondaire.",
+  "decision": "Adopter ONNX Runtime dans l'API (d\u00e9faut). Fallback LightGBM+pandas via SCORING_RUNTIME=lgbm."
+}

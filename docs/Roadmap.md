@@ -1,12 +1,12 @@
 # Roadmap — Projet 7 « Prêt à dépenser »
 
 Document vivant : à mettre à jour au fur et à mesure.  
-Dernière màj : **2026-11-25** (partie 2 — drift Evidently)
+Dernière màj : **2026-11-25** (partie 2 — optimisation ONNX)
 
 ## Où en est-on ? (résumé)
 
 **Partie 1 couverte** : FE + MLflow + CV + Optuna + seuil + SHAP + Registry/serving.  
-**Partie 2** : Git + API/Docker/CI **faits** ; **drift/logs faits** (D-021) ; optimisation post-déploiement **à faire**.
+**Partie 2** : Git + API/Docker/CI + drift/logs + **optimisation ONNX** (D-022) **faits**.
 
 Repère consigne OpenClassrooms — partie 1 :
 
@@ -26,9 +26,9 @@ Repère consigne — partie 2 :
 | Étape 1 — Git public structuré | **Partiel** (branche `EDA` poussée, sans `data/`/`mlruns`) — PR/`main` + polish README ouverts |
 | Étape 2 — API + Docker + tests + CI/CD | **Fait** (D-018, D-020) |
 | Étape 3 — Logs + drift | **Fait** (D-021) — `src/run_drift_analysis.py` + `reports/drift/` |
-| Étape 4 — Optimisation post-déploiement | **À faire** |
+| Étape 4 — Optimisation post-déploiement | **Fait** (D-022) — ONNX ×~210 latence, rapport `reports/optimization/` |
 
-**Prochaine étape recommandée :** profiling / optimisation inférence (étape 4, ex. ONNX) + courte note de résultats.
+**Prochaine étape recommandée :** polish livrable (README d’exécution, merge `EDA` → `main` si besoin).
 
 ---
 

@@ -21,7 +21,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from api.config import MODEL_PATH, SCHEMA_PATH, get_threshold, load_schema
+from api.config import MODEL_PATH, ONNX_PATH, SCHEMA_PATH, get_threshold, load_schema
 from api.logging_utils import append_prediction_log
 from api.model_runtime import get_runtime, load_runtime, unload_runtime
 from api.validation import InputValidationError, validate_features
@@ -97,12 +97,13 @@ def model_info() -> dict[str, Any]:
     schema = load_schema()
     runtime = get_runtime()
     return {
-        "model_path": str(MODEL_PATH),
+        "model_path": str(ONNX_PATH if runtime.backend == "onnx" else MODEL_PATH),
         "schema_path": str(SCHEMA_PATH),
         "fe_version": schema.get("fe_version"),
         "n_features": len(runtime.feature_names),
         "threshold_opt_valid": runtime.threshold,
         "decision_rule": f"proba >= {runtime.threshold} → REFUS else ACCORD",
+        "scoring_backend": runtime.backend,
     }
 
 

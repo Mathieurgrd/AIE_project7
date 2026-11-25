@@ -17,24 +17,25 @@ Date : **2026-11-25**
 | Dockerfile (slim) + run local | **Fait** (port 8001) |
 | GitHub Actions CI/CD | **Fait** (D-020) |
 | Logs + drift Evidently | **Fait** (D-021) |
-| Optimisation ONNX / profiling | **À faire** (étape 4) |
+| Optimisation ONNX / profiling | **Fait** (D-022) |
 
 ## Champion
 - LightGBM Optuna — seuil\* **0.52**, coût\* ≈ **29962**
-- Fichier servi par l’API : `models/champion_lgbm_optuna.txt`
+- Runtime API défaut : **ONNX** (`models/champion_lgbm_optuna.onnx`)
+- Fallback : `SCORING_RUNTIME=lgbm` + `models/champion_lgbm_optuna.txt`
 
 ## Commandes utiles
 ```powershell
 cd "c:\Users\Mathieu\Desktop\Formation\Projet 7"
+uv run python -m src.run_optimize_inference
 uv run uvicorn api.main:app --host 127.0.0.1 --port 8000
 uv run pytest tests/test_api.py -q
-uv run python -m src.run_drift_analysis --simulate-n 500 --inject-drift
-# Rapport : reports/drift/drift_report.html
+# Rapport opti : reports/optimization/optimization_report.md
 ```
 
 ## Prochaine étape
-1. **Étape 4 consigne** : profiling latence + tentative d’optimisation (ONNX ou code) + note résultats
-2. (Option) merger `EDA` → `main` ; README d’exécution
+1. (Option) README d’exécution bout-en-bout
+2. (Option) merger `EDA` → `main` ; confirmer repo public
 
 ## Contraintes agent
 - Consigne + Roadmap/Decision à jour ; **NON CONFORME** si exigence manquante.

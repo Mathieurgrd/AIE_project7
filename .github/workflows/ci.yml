@@ -58,6 +58,7 @@ jobs:
           curl -sf http://127.0.0.1:8000/health
           curl -sf http://127.0.0.1:8000/model/info | tee /tmp/model_info.json
           grep -q '"threshold_opt_valid":0.52' /tmp/model_info.json
+          grep -q '"scoring_backend":"onnx"' /tmp/model_info.json
           docker rm -f api-ci
 
       - name: Save image for simulated deploy

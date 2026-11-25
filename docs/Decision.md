@@ -283,6 +283,26 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 
 ---
 
+## D-022 — Optimisation inférence ONNX (partie 2 étape 4)
+
+- **Statut :** Accepté (2026-11-25)
+- **Contexte :** Consigne — profiling post-déploiement, stratégies d’optimisation (ex. ONNX), preuve de gain latence sans régression, version optimisée via CI/CD.
+- **Constat profiling (cProfile) :** goulot = construction DataFrame pandas + casts + `lightgbm._data_from_pandas` (~52 ms/requête), pas le scoring arbres.
+- **Décision :**
+  1. Encoder les catégorielles via `pandas_categorical` du booster → matrice float32.
+  2. Exporter le champion en ONNX (`onnxmltools`, zipmap=False) → `models/champion_lgbm_optuna.onnx` + `champion_lgbm_cat_maps.json`.
+  3. API défaut = **ONNX Runtime** ; fallback `SCORING_RUNTIME=lgbm` (pandas historique).
+  4. Image Docker : `onnxruntime` uniquement (plus de LightGBM au runtime).
+- **Résultats (mesurés) :**
+  - Latence single-row : ~52 ms → ~0.25 ms (**×~210**).
+  - AUC valid (2000) : identique (≈0.769) ; mean |Δproba| ≈ 2e-6 ; **0 flip** de décision @ seuil 0.52 sur 5000 lignes.
+  - Rapport : `reports/optimization/optimization_report.md`.
+- **Pourquoi pas quantifier / re-entraîner sans cats :** gain déjà suffisant ; re-train changerait le champion métier sans nécessité.
+- **Validation :** `src/run_optimize_inference.py` + pytest API (7) + smoke CI attendu `scoring_backend=onnx`.
+- **Conséquences :** partie 2 étape 4 **faite** ; reste polish Git/README optionnel.
+
+---
+
 ## D-019 — Dépôt Git « lean » (partie 2 étape 1, partiel)
 
 - **Statut :** Accepté (2026-11-21)
@@ -321,3 +341,4 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 | D-019 | Git lean (exclure data/mlruns) |
 | D-020 | GitHub Actions CI/CD |
 | D-021 | Logs + drift Evidently |
+| D-022 | Optimisation ONNX Runtime |

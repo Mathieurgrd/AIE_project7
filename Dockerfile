@@ -1,6 +1,7 @@
 # Image API scoring crédit (partie 2) — deps runtime seulement.
 # Build : docker build -t credit-scoring-api .
 # Run  : docker run --rm -p 8000:8000 credit-scoring-api
+# Runtime défaut : ONNX (étape 4). Fallback local : SCORING_RUNTIME=lgbm
 
 FROM python:3.11-slim
 
@@ -15,11 +16,13 @@ COPY requirements-api.txt ./
 RUN pip install --no-cache-dir -r requirements-api.txt
 
 COPY api ./api
-COPY models ./models
+COPY models/champion_lgbm_optuna.onnx ./models/champion_lgbm_optuna.onnx
+COPY models/champion_lgbm_cat_maps.json ./models/champion_lgbm_cat_maps.json
 COPY reports/api_feature_schema.json ./reports/api_feature_schema.json
 COPY reports/api_sample_client.json ./reports/api_sample_client.json
 
 ENV PYTHONPATH=/app
+ENV SCORING_RUNTIME=onnx
 EXPOSE 8000
 
 # Modèle chargé au startup (lifespan FastAPI), pas à chaque requête.
