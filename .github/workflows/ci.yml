@@ -4,9 +4,9 @@ name: CI API
 
 on:
   push:
-    branches: [EDA, main, master]
+    branches: [mlops2, main, master]
   pull_request:
-    branches: [EDA, main, master]
+    branches: [mlops2, main, master]
 
 jobs:
   test:

@@ -12,7 +12,7 @@ Date : **2026-11-25**
 | Bloc | Statut |
 |------|--------|
 | Partie 1 (FE → Optuna → SHAP → Registry) | **Fait** |
-| Git lean + push branche `EDA` | **Fait** (D-019) |
+| Git lean + push branche `mlops2` (ex-`EDA`) | **Fait** (D-019) |
 | API FastAPI + validation + tests | **Fait** (D-018) |
 | Dockerfile (slim) + run local | **Fait** (port 8001) |
 | GitHub Actions CI/CD | **Fait** (D-020) |
@@ -35,7 +35,7 @@ uv run pytest tests/test_api.py -q
 
 ## Prochaine étape
 1. (Option) README d’exécution bout-en-bout
-2. (Option) merger `EDA` → `main` ; confirmer repo public
+2. (Option) merger `mlops2` → `main` ; confirmer repo public
 
 ## Contraintes agent
 - Consigne + Roadmap/Decision à jour ; **NON CONFORME** si exigence manquante.

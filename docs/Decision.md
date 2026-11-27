@@ -256,7 +256,7 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 
 - **Statut :** Accepté (2026-11-22)
 - **Contexte :** Consigne — pipeline qui teste, build l’image Docker, déploie (local simulé OK).
-- **Décision :** workflow `.github/workflows/ci.yml` sur push/PR (`EDA`, `main`) :
+- **Décision :** workflow `.github/workflows/ci.yml` sur push/PR (`mlops2`, `main`) :
   1. **test** : `uv sync` + `pytest tests/test_api.py`
   2. **build** : `docker build` (image slim) + smoke `/health` + `/model/info`
   3. **deploy-simulated** : charge l’artifact image (`docker load`) — pas de cloud
@@ -310,7 +310,7 @@ Dernière màj : **2026-10-09** (SHAP + Registry)
 - **Décision :**
   - Enrichir `.gitignore` : `data/`, `mlruns/`, `mlflow.db`, `logs/`, archives zip/rar.
   - Réécrire l’historique local (reset sur commit initial + un commit propre).
-  - Pousser la branche `EDA` : https://github.com/Mathieurgrd/AIE_project7/tree/EDA
+  - Pousser la branche `mlops2` (ex-`EDA`) : https://github.com/Mathieurgrd/AIE_project7/tree/mlops2
 - **Pourquoi :** GitHub coupe les pushes trop lourds ; les CSV Home Credit se régénèrent / se retéléchargent ; MLflow se rejoue.
 - **Reste ouvert :** dépôt encore partiellement « à ranger » (PR vers `main`, README d’exécution, rendre le repo clairement public / default branch).
 

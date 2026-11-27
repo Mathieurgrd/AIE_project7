@@ -23,12 +23,12 @@ Repère consigne — partie 2 :
 
 | Bloc | Statut |
 |------|--------|
-| Étape 1 — Git public structuré | **Partiel** (branche `EDA` poussée, sans `data/`/`mlruns`) — PR/`main` + polish README ouverts |
+| Étape 1 — Git public structuré | **Partiel** (branche `mlops2` poussée, sans `data/`/`mlruns`) — PR/`main` + polish README ouverts |
 | Étape 2 — API + Docker + tests + CI/CD | **Fait** (D-018, D-020) |
 | Étape 3 — Logs + drift | **Fait** (D-021) — `src/run_drift_analysis.py` + `reports/drift/` |
 | Étape 4 — Optimisation post-déploiement | **Fait** (D-022) — ONNX ×~210 latence, rapport `reports/optimization/` |
 
-**Prochaine étape recommandée :** polish livrable (README d’exécution, merge `EDA` → `main` si besoin).
+**Prochaine étape recommandée :** polish livrable (README d’exécution, merge `mlops2` → `main` si besoin).
 
 ---
 
