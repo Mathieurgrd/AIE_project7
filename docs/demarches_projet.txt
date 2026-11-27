@@ -1,0 +1,215 @@
+================================================================================
+DEMARCHES DU PROJET — Prêt à dépenser (scoring crédit)
+================================================================================
+Date : 2026-10-09
+Public : toi (Mathieu) + relecture mentor / jury
+Objectif du fichier : raconter CE QUI A ETE FAIT, pourquoi (tech + métier),
+                      et où en est la conformité consigne.
+
+Compléments :
+  - docs/Roadmap.md, docs/Decision.md (jalons / décisions)
+  - docs/Optuna.md, mlflow_cas_usage.txt, notes.txt § métriques
+  - docs/commandes_utiles.txt
+
+
+--------------------------------------------------------------------------------
+0. OPTUNA / HYPERPARAMS — OUI, C’EST FAIT (pas « enlevé »)
+--------------------------------------------------------------------------------
+Si tu as l’impression que l’opti hyperparams a disparu du notebook : c’est
+parce que la checklist « Suite » a été réorganisée après coup (les items
+terminés sont dans §6 / Roadmap J5, plus dans une case « à faire »).
+
+PREUVES :
+  - Script : src/run_optuna_lgbm.py
+  - Décision : docs/Decision.md → D-015
+  - Artefact : reports/optuna_lgbm_best.json
+  - Run MLflow : lightgbm_optuna_fe_v1 (25 trials nestés)
+  - Résultat : valid AUC ≈ 0.786 ; seuil* = 0.52 ; coût* ≈ 29962
+
+Commande :
+  uv run python -m src.run_optuna_lgbm --n-trials 25
+
+
+--------------------------------------------------------------------------------
+1. COMPREHENSION MISSION (tech + métier)
+--------------------------------------------------------------------------------
+METIER
+  Banque « Prêt à dépenser » : décider d’accorder ou refuser un crédit conso
+  à des clients avec peu d’historique. Un défaut (mauvais client accepté = FN)
+  coûte beaucoup plus cher qu’un refus d’un bon client (FP). Hypothèse simple
+  retenue : FN:FP = 10:1 (exemple consigne, D-011).
+
+TECH
+  Problème = classification binaire (TARGET 0/1) avec proba de défaut,
+  puis seuil de décision ≠ forcément 0.5. Pipeline MLOps MLflow exigé
+  (tracking → registry → serving) + explicabilité globale et locale
+  (phrase mission + notes.txt : chargé d’études doit comprendre le score).
+
+
+--------------------------------------------------------------------------------
+2. DONNEES & EDA
+--------------------------------------------------------------------------------
+METIER
+  Comprendre le portefeuille : ~8 % de défauts → métrique accuracy trompeuse ;
+  besoin de stratification et de pondération des classes.
+
+TECH
+  Notebook 01 : exploration application_train (NA, EXT_SOURCE, DAYS_EMPLOYED
+  sentinelle…). Tables Home Credit jointes ensuite via SK_ID_CURR.
+
+
+--------------------------------------------------------------------------------
+3. FEATURE ENGINEERING fe_v1
+--------------------------------------------------------------------------------
+METIER
+  Le risque se lit surtout dans l’historique de crédit / paiement (bureau,
+  previous, installments…), pas seulement dans la fiche demande.
+
+TECH
+  src/features.py + src/build_dataset.py : aggs multi-tables, ratios, flags NA,
+  anti-leakage (impute/OHE/scaler UNIQUEMENT après split, dans les pipelines).
+  Artefacts : data/processed/{train,valid,test}.parquet
+  Validé Mathieu. Tag MLflow fe_version=fe_v1.
+
+
+--------------------------------------------------------------------------------
+4. BASELINES + MLFLOW TRACKING / UI
+--------------------------------------------------------------------------------
+METIER
+  Première lecture « est-ce qu’un modèle simple bat le hasard ? » avant
+  d’investir en CV / Optuna.
+
+TECH
+  Notebook 03 : LogisticRegression (pipeline) + LightGBM, seuil 0.5, log
+  params/metrics/model → sqlite:///mlflow.db, expérience credit-scoring-fe_v1.
+  UI : uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+
+
+--------------------------------------------------------------------------------
+5. MULTI-MODELES + StratifiedKFold + SEUIL (consigne étapes 3–4 partiel)
+--------------------------------------------------------------------------------
+METIER
+  Comparer des familles sous le MÊME critère de coût d’erreur, pas seulement
+  l’AUC. Décider qui mérite d’être optimisé ensuite.
+
+TECH
+  src/run_cv_baselines.py : StratifiedKFold(5), LR / RF / LGBM / XGB,
+  seuil* = argmin coût sur OOF, métriques holdout valid.
+  Classement valid coût@0.5 :
+    LightGBM 30013 < XGBoost 30421 < LogReg 31666 < RF 32324
+  → Champion provisoire = LightGBM (D-013, D-014).
+
+
+--------------------------------------------------------------------------------
+6. OPTUNA SUR LIGHTGBM + RE-SEUIL (consigne étape 4)
+--------------------------------------------------------------------------------
+METIER
+  Améliorer un peu le ranking des risques puis régler le curseur d’acceptation
+  (seuil) pour minimiser les pertes FN/FP sur valid.
+
+TECH
+  Optuna TPE, 25 trials, objectif = maximiser AUC CV (3 folds), puis éval
+  5-fold + seuil* sur valid. Séparation volontaire AUC (HPO) / coût (seuil)
+  pour un signal plus propre (D-015).
+  Gain : AUC 0.784 → 0.786 ; coût@seuil 0.52 → 29962 (vs 30013@0.5 baseline).
+
+
+--------------------------------------------------------------------------------
+7. EXPLICABILITE SHAP (mission — notes.txt L603–604) — FAIT 2026-10-09
+--------------------------------------------------------------------------------
+OUI, ça s’applique pleinement au projet. La mission exige d’analyser les
+features les plus influentes :
+  - de manière GÉNÉRALE (globale)
+  - au niveau d’un CLIENT (locale)
+pour qu’un chargé d’études comprenne le score.
+
+TECH
+  src/run_shap_lgbm.py : TreeExplainer sur champion Optuna.
+  Global : summary + bar + CSV mean |SHAP| (n=1500 valid).
+  Local : 3 waterfalls (refus clair, accord clair, proche du seuil*).
+  Artefacts : reports/shap/ + run MLflow lightgbm_shap_fe_v1.
+
+  Top global observé (mean |SHAP|) :
+    1) EXT_SOURCE_2  2) EXT_SOURCE_3  3) EXT_SOURCE_1
+    4) CREDIT_GOODS_RATIO  5) ORGANIZATION_TYPE  6) CODE_GENDER
+    7) LATE_RATE  …
+
+  Cas locaux :
+    - SK_ID 156227 proba≈0.97 → REFUS (y_true=1) ; top EXT_SOURCE_2
+    - SK_ID 249554 proba≈0.01 → ACCORD (y_true=0) ; top EXT_SOURCE_2
+    - SK_ID 324321 proba≈0.52 → REFUS près seuil ; top CODE_GENDER
+
+METIER
+  Global = « en moyenne, quelles infos font monter/baisser le risque ? »
+  Les EXT_SOURCE_* (scores externes) dominent — cohérent avec l’EDA.
+  LATE_RATE / historiques = signal comportemental de remboursement.
+  Local = « pour CE dossier, pourquoi on refuse / accepte ? ».
+
+  POINT D’ATTENTION (à dire en présentation) :
+  CODE_GENDER apparaît dans le top global et en local près du seuil.
+  C’est une variable sensible (équité / discrimination). Pour OC on la
+  documente comme observation du modèle fe_v1 ; en prod réelle on
+  discuterait exclusion / monitoring fairlendling avec le métier.
+
+
+--------------------------------------------------------------------------------
+8. MODEL REGISTRY + SERVING (mission Michaël) — FAIT 2026-10-09
+--------------------------------------------------------------------------------
+TECH
+  src/run_register_champion.py :
+    - wrapper pyfunc CreditLGBMWrapper (gère catégories)
+    - Model Registry name = credit-scoring-lgbm
+    - version 2 en Staging + alias @champion
+    - smoke pyfunc OK ; serving HTTP testé :
+        POST http://127.0.0.1:5001/invocations → {"predictions":[...]}
+  Artefact : reports/registry_champion.json
+
+  Lancer le serving (quand tu veux) :
+    uv run mlflow models serve -m "models:/credit-scoring-lgbm@champion" --port 5001 --env-manager local --host 127.0.0.1
+
+  Le SEUIL métier (0.52) reste côté application :
+    si proba >= 0.52 → REFUS sinon ACCORD.
+
+METIER
+  Modèle VERSIONNÉ appelable par une API / futur dashboard chargé d’études
+  (pré-prod locale OC). Traçabilité : quelle version a produit quel score.
+
+
+--------------------------------------------------------------------------------
+9. OU ON EN EST / CONFORMITE (après 2026-10-09)
+--------------------------------------------------------------------------------
+FAIT (aligné consigne / mission) :
+  FE, tracking+UI, CV multi-algos, coût métier, seuil optimisé, Optuna,
+  SHAP global+local, Model Registry, test serving.
+
+RESTE / OPTIONNEL (non bloquant mission) :
+  - MLP (option consigne)
+  - fe_v2 enrichi type jsaguiar
+  - Calibrage monétaire réel du ratio FN:FP
+  - README final bout-en-bout + polish notebooks
+  - Approfondir le discours équité (CODE_GENDER)
+
+INTERVENTION HUMAINE UTILE (pas bloquante pour le code) :
+  1) Ouvrir reports/shap/*.png et relire le récit métier des top features
+  2) Relancer UI MLflow + éventuellement le serve pour te familiariser
+  3) Décider si tu veux exclure CODE_GENDER en fe_v2 (choix produit)
+
+
+--------------------------------------------------------------------------------
+10. COMMANDES CLEFS
+--------------------------------------------------------------------------------
+cd "c:\Users\Mathieu\Desktop\Formation\Projet 7"
+
+uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+uv run python -m src.build_dataset
+uv run python -m src.run_cv_baselines
+uv run python -m src.run_optuna_lgbm --n-trials 25
+uv run python -m src.run_shap_lgbm
+uv run python -m src.run_register_champion
+uv run mlflow models serve -m "models:/credit-scoring-lgbm@champion" --port 5001 --env-manager local --host 127.0.0.1
+
+Voir aussi : docs/commandes_utiles.txt
+
+================================================================================
+FIN
+================================================================================

@@ -1,0 +1,8 @@
+# Dépendances runtime API uniquement (image Docker légère).
+# Le pyproject.toml complet reste pour le dev / notebooks / MLflow.
+fastapi>=0.142.2
+uvicorn>=0.54.0
+pydantic>=2.13.5
+numpy>=2.4.6
+pandas>=3.0.6
+onnxruntime>=1.32.0

@@ -1,0 +1,17 @@
+.venv/
+.cursor/
+.git/
+data/
+mlruns/
+logs/
+notebooks/
+docs/
+screenshots/
+*.zip
+*.rar
+__pycache__/
+.pytest_cache/
+mlflow.db
+notes.txt
+consigne.txt
+Projet 7.rar

@@ -3,6 +3,40 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+#Project related files
+consigne.txt
+notes.txt
+
+# Données brutes / intermédiaires / processed (trop volumineux pour GitHub)
+data/
+
+# Tracking MLflow local (rejouable ; ne pas versionner)
+mlruns/
+mlflow.db
+mlflow.db-*
+
+# Logs API production (locaux ; régénérés à l'usage)
+logs/
+
+# Environnement / caches locaux
+.venv/
+.cursor/
+*.pyc
+__pycache__/
+
+# Fichiers temporaires agent / OS
+_nb_md_extract.txt
+_qa_md.txt
+_rewrite_nb_md.py
+_out*.txt
+Thumbs.db
+Desktop.ini
+
+# Archives locales (livrables OC déjà exportés, ne pas re-pousser)
+*.zip
+*.rar
+*.7z
+
 # C extensions
 *.so
 

@@ -1,0 +1,17 @@
+{
+  "model_name": "credit-scoring-lgbm",
+  "version": 2,
+  "stage": "Staging",
+  "alias": "champion",
+  "run_id": "0847e34572c14523b3adc8425ec0f9fc",
+  "threshold_opt_valid": 0.52,
+  "model_uri_alias": "models:/credit-scoring-lgbm@champion",
+  "model_uri_stage": "models:/credit-scoring-lgbm/Staging",
+  "smoke_proba_head5": [
+    0.29111669301741194,
+    0.26545695853067586,
+    0.773734644592591,
+    0.36965581018311616,
+    0.5057473646377467
+  ]
+}

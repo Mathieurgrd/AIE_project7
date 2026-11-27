@@ -1,0 +1,31 @@
+[project]
+name = "projet-7"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "evidently>=0.7.23",
+    "fastapi>=0.142.2",
+    "httpx>=0.28.1",
+    "imbalanced-learn>=0.14.2",
+    "ipykernel>=7.4.0",
+    "jupyter>=1.1.1",
+    "lightgbm>=4.7.0",
+    "matplotlib>=3.11.2",
+    "missingno>=0.5.2",
+    "mlflow>=3.16.1",
+    "numpy>=2.4.6",
+    "onnxmltools>=1.16.0",
+    "onnxruntime>=1.32.0",
+    "optuna>=5.0.0",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
+    "pydantic>=2.13.5",
+    "pytest>=9.2.0",
+    "scikit-learn>=1.9.1",
+    "seaborn>=0.13.2",
+    "shap>=0.51.0",
+    "uvicorn>=0.54.0",
+    "xgboost>=3.2.0",
+]

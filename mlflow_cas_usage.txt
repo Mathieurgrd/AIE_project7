@@ -1,0 +1,177 @@
+================================================================================
+MLflow — vue d’ensemble + cas d’usage « Prêt à dépenser »
+Projet 7 | document pédagogique (pas une doc technique exhaustive)
+================================================================================
+
+1. C’EST QUOI, EN UNE PHRASE ?
+--------------------------------------------------------------------------------
+MLflow est une boîte à outils open source pour **suivre, comparer, stocker et
+servir** des modèles de machine learning — comme un « cahier de labo + armoire
+à modèles versionnés » pour toute l’équipe data.
+
+
+2. POURQUOI C’EST UTILE EN SITUATION PRO (pas juste en formation) ?
+--------------------------------------------------------------------------------
+Sans outil de ce type, une équipe finit souvent avec :
+  - 15 notebooks « final_v2_vraiment_final.ipynb »
+  - des AUC citées de mémoire (« on avait fait 0.78 un jour »)
+  - personne ne sait quel modèle est en prod, avec quels hyperparams / quelle
+    version des données
+
+MLflow répond à des besoins concrets :
+
+  Traçabilité
+    Qui a entraîné quoi, quand, avec quels paramètres, quelles métriques,
+    quel code / quelles libs approximatives.
+
+  Comparaison
+    LightGBM vs LR vs XGBoost : même grille de lecture (AUC, recall, coût
+    métier) dans une UI, pas dans trois Excel différents.
+
+  Reproductibilité (partielle mais réelle)
+    Retrouver un run et le rejouer / le ré-enregistrer plus facilement.
+
+  Gouvernance du modèle
+    Un Model Registry : Staging → Production. Le chargé d’études ou l’API
+    consomme « le modèle Production v3 », pas un pickle sur le Desktop de
+    quelqu’un.
+
+  Pré-production / serving
+    Tester une API de prédiction locale avant de brancher le SI réel.
+
+En banque / crédit scoring, ça compte encore plus : audit, explicabilité,
+changement de modèle documenté, rollback si un nouveau modèle est pire.
+
+
+3. LES MORCEAUX DE MLflow (le minimum à connaître)
+--------------------------------------------------------------------------------
+  Tracking
+    Chaque entraînement = un « run » : params, métriques, tags, artefacts
+    (modèle, courbes…). L’UI web permet de les comparer.
+
+  Model Registry
+    Catalogue central : versions du modèle, stages (None / Staging /
+    Production / Archived).
+
+  Serving
+    Exposer un modèle enregistré en endpoint HTTP pour prédire une proba.
+
+  (Projects / Recipes existent aussi ; hors scope pour l’instant.)
+
+Chez nous aujourd’hui :
+  - Backend tracking = SQLite (fichier mlflow.db à la racine)
+  - UI = http://127.0.0.1:5000
+  - Expérience = credit-scoring-fe_v1
+  - Runs déjà là : logreg_baseline_fe_v1, lightgbm_baseline_fe_v1
+
+
+4. CAS D’USAGE DANS NOTRE PROJET
+--------------------------------------------------------------------------------
+Contexte métier : scorifier une demande de crédit (proba de défaut), choisir
+un modèle selon un **coût métier** (FN plus cher que FP), être transparent
+(features), et préparer une pré-prod.
+
+Comment on s’en sert concrètement :
+
+  Étape A — Pendant l’expérimentation (maintenant / suite)
+    Pour chaque essai (LR, LightGBM, puis Optuna, puis autre seuil) :
+      mlflow.start_run(...)
+      log params  : n_estimators, learning_rate, class_weight, seuil,
+                    fn_cost, fp_cost, fe_version=fe_v1
+      log metrics : AUC, accuracy, F1, recall, business_cost, FN, FP
+      log model   : artefact utilisable plus tard
+    → Dans l’UI : trier par business_cost ou AUC, voir qui gagne vraiment.
+
+  Étape B — Décision
+    On ne choisit plus « au feeling » : on pointe le run retenu
+    (ex. LightGBM + seuil optimisé) et on le documente.
+
+  Étape C — Registry (prochaine brique MLOps)
+    Enregistrer ce run dans le Model Registry, le passer en Staging puis
+    éventuellement Production (même si « Production » reste locale pour OC).
+
+  Étape D — Serving (pré-prod)
+    mlflow models serve … → une requête JSON (features client) → proba.
+    Le chargé d’études / une future API Dashboard consomme cette proba
+    (+ seuil métier pour accorder / refuser).
+
+Ce que MLflow ne remplace PAS :
+  - le feature engineering (nos parquet fe_v1)
+  - le jugement métier sur le ratio FN/FP
+  - l’explicabilité SHAP (complément à brancher à part)
+  - un vrai déploiement cloud (ici on reste en pré-prod locale)
+
+
+5. COMMENT ÇA S’IMBRIQUE DANS UN PROCESSUS ML ITÉRATIF ?
+--------------------------------------------------------------------------------
+Boucle typique (et c’est exactement notre roadmap) :
+
+  (1) Données / FE
+        → fe_v1 (puis fe_v2 si besoin)
+        → tag MLflow : fe_version
+
+  (2) Expérimenter des modèles
+        → plusieurs runs Tracking
+        → comparer dans l’UI
+
+  (3) Optimiser (hyperparams + seuil métier)
+        → nouveaux runs, mêmes métriques
+        → garder le meilleur selon coût (pas seulement AUC)
+
+  (4) Valider (robustesse, pas d’overfit, AUC crédible)
+        → si échec : retour (1) ou (2)
+
+  (5) Packager
+        → Model Registry (version N)
+
+  (6) Pré-prod / serving
+        → test API locale
+
+  (7) (Plus tard en vrai job) Monitoring
+        → dérive des données, perf qui baisse → retour (1)
+
+MLflow est le **fil rouge entre (2) et (6)** : chaque tour de boucle laisse
+une trace comparable, au lieu d’écraser le travail précédent.
+
+Schéma mental :
+
+  FE ──► train ──► log run ──► comparer UI
+   ▲         │                      │
+   │         └── meilleur run ──────┤
+   │                                ▼
+   └── si perf insuffisante    Registry → Serving → (prod / pré-prod)
+       on change FE ou modèle
+
+
+6. UTILISATION PRATIQUE CHEZ NOUS (pense-bête)
+--------------------------------------------------------------------------------
+  Lancer l’UI :
+    uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+    → http://127.0.0.1:5000
+
+  Dans le code (déjà amorcé notebook 03 / scripts) :
+    mlflow.set_tracking_uri("sqlite:///.../mlflow.db")
+    mlflow.set_experiment("credit-scoring-fe_v1")
+    with mlflow.start_run(run_name="..."):
+        mlflow.log_params({...})
+        mlflow.log_metrics({...})
+        mlflow.sklearn.log_model(...)  # ou lightgbm
+
+  Bonnes habitudes :
+    - Toujours logger fe_version, seuil, fn_cost, fp_cost
+    - Nommer les runs clairement (lightgbm_optuna_seuil0.32)
+    - Ne pas logger des datasets entiers (trop lourd)
+
+
+7. EN RÉSUMÉ
+--------------------------------------------------------------------------------
+MLflow = mémoire collective + comparaison + passage vers un modèle « officiel »
+et testable. Dans notre scoring crédit, il transforme une série d’essais
+dispersés en un processus itératif où chaque amélioration (FE, modèle, seuil)
+est mesurable et récupérable — comme on le ferait dans une vraie équipe data
+avant de mettre un modèle sous les yeux d’un chargé d’études ou d’un SI.
+
+
+================================================================================
+FIN
+================================================================================

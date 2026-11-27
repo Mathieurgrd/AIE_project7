@@ -1,0 +1,302 @@
+================================================================================
+CHOIX TECHNIQUES — Projet 7 « Prêt à dépenser »
+Fichier de traçabilité des décisions (FE → seuil MLflow)
+Date : 2026-10-07 (revu 2026-10-07 : justifications clarifiées + kernels)
+FE version : fe_v1
+================================================================================
+
+1. PÉRIMÈTRE DE CETTE PHASE
+--------------------------------------------------------------------------------
+Avancer au maximum jusqu’au jalon MLflow, SANS configurer / lancer MLflow
+(validation humaine du FE requise avant le tracking).
+
+Réalisé :
+  - Proposition + implémentation FE fe_v1
+  - Dataset 1 ligne = 1 SK_ID_CURR
+  - Split stratifié train/valid + test FE-aligné
+  - Artefacts data/processed/ et data/interim/
+  - Notebook 03 prêt pour MLflow
+  - Smoke test LightGBM (AUC ~0.78)
+
+Non réalisé (jalon suivant) :
+  - UI MLflow / registry / serving
+  - Optuna + seuil métier final
+  - SHAP détaillé
+
+
+1.bis  KERNELS KAGGLE DE LA CONSIGNE — HONNÊTETÉ
+--------------------------------------------------------------------------------
+Question : ai-je pris connaissance des kernels annexés avant de coder fe_v1 ?
+
+Réponse courte : **NON, pas avant l’implémentation.**
+  fe_v1 a été conçu à partir de l’EDA projet + bonnes pratiques Home Credit /
+  anti-leakage, sans ouvrir ligne à ligne les notebooks de la consigne.
+
+Après coup (relecture via pages / résumés publics, accès Kaggle HTML limité) :
+
+  A) willkoehrsen — « Start Here: A Gentle Introduction »
+     https://www.kaggle.com/code/willkoehrsen/start-here-a-gentle-introduction
+     Rôle : kernel **EDA / prise en main**.
+     Idées clés : partir d’application_train, comprendre TARGET déséquilibré,
+     métrique AUC (pas accuracy), NA, catégorielles, baselines simples.
+     Lien avec nous : notre notebook 01 suit la même logique pédagogique.
+     Ce kernel ne fait PAS (ou peu) le FE multi-tables complet.
+
+  B) jsaguiar — « LightGBM with Simple Features »
+     https://www.kaggle.com/code/jsaguiar/lightgbm-with-simple-features
+     Rôle : kernel **FE + LightGBM**.
+     Idées clés : une fonction d’agg par table ; groupby SK_ID_CURR avec
+     min/max/mean/sum(/var) ; ratios (annuité/revenu, etc.) ; aggs séparées
+     Active/Closed (bureau) et Approved/Refused (previous) ; installments
+     avec diff de paiement et retards.
+     Lien avec nous : fe_v1 **reprend l’esprit** (aggs + ratios + retards),
+     mais en version **allégée** (moins de stats, moins de one-hot massif,
+     pas toutes les variantes Active/Closed détaillées comme chez jsaguiar).
+
+Écarts volontaires vs jsaguiar :
+  - Moins de features (lisibilité / mission OC + MLOps > score Kaggle max).
+  - Pas de copie du script : code dans src/, documenté, anti-leakage explicite.
+  - Preprocessing « fit » (impute/OHE pour LR) reporté après split.
+
+Action possible en fe_v2 (si tu le demandes) : enrichir bureau/previous comme
+jsaguiar (aggs Active vs Closed, Approved vs Refused plus fines).
+
+
+2. PROPOSITION FEATURE ENGINEERING (fe_v1)
+--------------------------------------------------------------------------------
+Philosophie (3 règles simples) :
+
+  1) D’abord l’historique crédit/paiements, pas les 122 colonnes une par une.
+     Pourquoi : le défaut se lit surtout dans le passé de remboursement, pas
+     dans chaque FLAG_DOCUMENT isolé.
+
+  2) Avant le split : seulement des calculs « fixes » (âge, ratios, groupby).
+     Après le split : tout ce qui *apprend* sur les données (médiane pour
+     imputer, modalités pour One-Hot, moyenne/écart-type pour scaler).
+     Pourquoi : éviter le **leakage** (fuite d’info du valid/test vers l’entraînement).
+     En pratique : si tu calcules la médiane sur TOUT le dataset puis tu splits,
+     le valid a déjà « influencée » cette médiane → score trop optimiste.
+
+  3) seed=42 + préfixes BUREAU_/PREV_/… pour retrouver l’origine d’une feature.
+
+
+2.1 application_train / test (nettoyage déterministe)
+
+  - DAYS_EMPLOYED == 365243 → NaN + flag DAYS_EMPLOYED_ANOMALY
+    Pourquoi : ce chiffre est un code « valeur manquante / sans emploi », pas
+    une vraie durée d’emploi (~18 % des clients).
+
+  - AGE_YEARS = -DAYS_BIRTH / 365.25
+    Pourquoi : l’âge en années est plus lisible que des jours négatifs.
+
+  - EMPLOYMENT_YEARS = -DAYS_EMPLOYED / 365.25 (après nettoyage)
+    Pourquoi : même raison, pour l’ancienneté d’emploi.
+
+  - Ratios CREDIT_INCOME_RATIO, ANNUITY_INCOME_RATIO, CREDIT_GOODS_RATIO
+    Pourquoi : « combien pèse le crédit / la mensualité par rapport au revenu »
+    parle plus du risque que le montant brut seul (aussi présent chez jsaguiar).
+
+  - HOUSING_MISSING = 1 si COMMONAREA_AVG est vide
+    Pourquoi : l’EDA montre que les infos immeuble manquent souvent *en bloc* ;
+    le fait de ne pas avoir l’info peut être un signal, pas seulement un trou.
+
+  - On garde EXT_SOURCE_1/2/3 tels quels
+    Pourquoi : ce sont des scores de risque externes ; en EDA ils séparent déjà
+    bien bons / mauvais payeurs.
+
+  - On ne jette pas tout le bloc logement à 60–70 % de NA
+    Pourquoi : une colonne très vide n’est pas forcément inutile (surtout avec
+    un flag + modèles à arbres qui gèrent les NA).
+
+
+2.2 bureau (crédits chez d’autres organismes)
+
+  Agg par client (count, sum/mean/max dettes et retards, nb Active/Closed…).
+  Pourquoi : connaître l’endettement *ailleurs* et les retards déjà observés
+  aide à estimer le risque actuel.
+
+
+2.3 bureau_balance (historique mensuel de ces crédits)
+
+  Agg en 2 temps (mois → crédit → client) pour ne pas saturer la RAM.
+  RAM = Random Access Memory = la mémoire vive de l’ordinateur (là où Python
+  charge les tableaux pendant le calcul). Ce n’est pas le disque dur : si un
+  CSV de ~27M lignes est lu d’un coup puis joint sans agrégation, la RAM peut
+  se remplir → machine lente ou plantage (MemoryError).
+  Pourquoi l’agg en 2 temps : savoir *à quelle fréquence* le client était en
+  retard mois après mois est utile, mais il faut réduire le volume tôt
+  (mois → crédit, puis crédit → client) pour rester dans la RAM disponible.
+
+
+2.4 previous_application (anciennes demandes chez Home Credit)
+
+  Nb demandes, montants moyens, part Approuvé / Refusé / Annulé…
+  Pourquoi : un client souvent refusé (ou toujours approuvé) n’a pas le même
+  profil de risque.
+
+
+2.5 installments_payments (échéances et paiements réels)
+
+  On crée puis on agrège :
+  - PAYMENT_DIFF = payé − dû  (négatif = a payé moins que prévu)
+  - DAYS_LATE = date paiement − date prévue  (positif = en retard)
+  - LATE_RATE = part d’échéances en retard
+
+  Pourquoi : quelqu’un qui paie en retard ou moins que prévu sur d’anciens
+  crédits a un comportement **proche** du défaut qu’on cherche à prédire
+  (« proche » = même famille de signal métier : mauvaise tenue de paiement,
+  pas une preuve directe du TARGET actuel).
+
+
+2.6 POS_CASH_balance
+
+  Moyenne / max des jours de retard (DPD), échéances restantes, etc.
+  Pourquoi : retards déjà vus sur crédits magasin / cash Home Credit.
+
+
+2.7 credit_card_balance
+
+  Solde, plafond, taux d’utilisation (solde/plafond), retards.
+  Pourquoi : une carte très utilisée ou en retard suggère une tension financière.
+
+
+2.8 Merges
+
+  Left join sur SK_ID_CURR ; on vérifie que le nombre de lignes ne change pas.
+  Pourquoi : si le merge multiplie les lignes, le modèle voit plusieurs fois
+  le même client → résultats faussés.
+  Les NA après merge = « pas d’historique sur cette table » : normal.
+
+
+3. SPLIT & ARTEFACTS
+--------------------------------------------------------------------------------
+  - Split 80 % train / 20 % valid, **stratifié** sur TARGET, seed=42.
+    Pourquoi : garder ~8 % de défauts dans les deux jeux (sinon un côté peut
+    se retrouver avec trop peu de TARGET=1).
+
+  - Même FE sur application_test (sans TARGET).
+  - Fichiers : data/interim/*.parquet + data/processed/{train,valid,test}.parquet
+    + meta.json
+  - Parquet plutôt que CSV : plus compact et plus rapide à recharger.
+
+  - Imputation / One-Hot / scaling sklearn : **après** le split, dans le
+    notebook modèle (pipeline LR). LightGBM peut travailler avec catégories
+    et NA sans ce preprocessing lourd.
+    Pourquoi : le « fit » ne doit voir que le train.
+
+
+4. CHOIX NON RETENUS (et pourquoi)
+--------------------------------------------------------------------------------
+  - Copier-coller un kernel Kaggle entier
+    Pourquoi : la consigne demande d’analyser/adapter ; un script opaque est
+    mauvais pour la soutenance / la pédagogie / le MLOps.
+
+  - Appliquer SMOTE sur tout le dataset avant le split
+    Pourquoi : le valid recevrait des clients « synthétiques » ou une
+    distribution faussée → on ne mesure plus la vraie perf. SMOTE = seulement
+    dans les folds d’entraînement, plus tard.
+
+  - Scaling (StandardScaler / MinMax) sur TOUT le jeu AVANT le split
+    Pourquoi — explication détaillée (ligne autrefois trop courte) :
+      Le scaler calcule moyenne et écart-type (ou min/max) sur les données
+      qu’on lui donne. Si tu le fit sur train+valid mélangés :
+        1) la moyenne « voit » déjà les clients du valid ;
+        2) tu transformes ensuite le valid avec ces stats ;
+        3) le modèle est évalué sur un valid qui a fuité dans le preprocessing
+           → AUC trop belle, non reproductible en prod.
+      Bonne pratique : fit_transform(train) puis transform(valid/test) seulement,
+      idéalement dans un Pipeline sklearn. Pour LightGBM, le scaling est souvent
+      inutile (arbres = seuils sur valeurs brutes).
+
+  - Supprimer toutes les colonnes avec > 60 % de NA
+    Pourquoi : EXT_SOURCE_1 et le bloc logement montrent qu’on peut garder
+    l’info + un flag d’absence plutôt que tout jeter trop tôt.
+
+  - FE type compétition (centaines de features, stacks)
+    Pourquoi : hors priorité de fe_v1 (temps, lisibilité, focus coût métier +
+    MLflow).
+
+
+5. RISQUES & POINTS DE VIGILANCE
+--------------------------------------------------------------------------------
+  - Gros fichiers (bureau_balance, installments) : risque RAM → aggs par étapes.
+  - Si un jour AUC > 0.82 : se demander s’il y a leakage (consigne Michaël).
+  - fe_v1 ≠ meilleur score Kaggle possible : base solide pour la mission OC.
+
+
+6. STATUT JALON MLflow
+--------------------------------------------------------------------------------
+  A) fe_v1 — FAIT (validé Mathieu).
+  B) UI SQLite — FAIT (confirmé OK).
+       Commande : uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+  C) Runs baselines — FAIT (LR + LightGBM dans experiment credit-scoring-fe_v1).
+  D) Ratio FN:FP — hypothèse de travail 10:1 (exemple consigne), à calibrer
+     métier ; voir 6.bis.
+
+
+6.bis  COMMENT FIXER LE COÛT FN/FP SANS LE TIRER AU HASARD ?
+--------------------------------------------------------------------------------
+La consigne dit « par exemple FN = 10 × FP » : c’est un **exemple pédagogique**,
+pas une constante économique magique.
+
+Idée : exprimer chaque erreur en **euros attendus** (même unité), puis
+ratio = coût_FN / coût_FP.
+
+  Coût d’un FN (mauvais client accepté)
+    ≈ perte moyenne si défaut
+    ≈ exposition × taux de perte en cas de défaut (LGD)
+    Ex. : crédit moyen 150 k€, on récupère 40 % → perte ~ 90 k€.
+    (Ou plus simple : moyenne historique des pertes sur dossiers en défaut.)
+
+  Coût d’un FP (bon client refusé)
+    ≈ marge / profit attendu qu’on rate sur un bon payeur
+    Ex. : marge nette moyenne sur la durée du prêt ~ 9 k€.
+
+  Alors ratio ≈ 90 / 9 = 10 → on **retrouve** 10:1, mais ancré sur des chiffres
+  métier, pas sur un doigt levé.
+
+Autres façons non arbitraires :
+  1) Atelier risk / métier : consensus documenté « défaut vs refus ».
+  2) Données historiques de la boîte (pertes réelles vs marges).
+  3) Sensibilité : tester 5:1, 10:1, 20:1 — si modèle/seuil bougent peu,
+     le chiffre exact importe moins ; sinon trancher avec le métier.
+  4) Appétit au risque / contrainte (ex. rappel minimal) plutôt qu’un ratio euro.
+
+Pour la suite : on garde 10:1 comme hypothèse tracée dans MLflow
+(params fn_cost/fp_cost), en attendant validation mentor / vrais chiffres.
+Le seuil 0.5 reste à optimiser sous ce coût.
+
+
+================================================================================
+JOURNAL D’EXÉCUTION
+================================================================================
+
+--- RUN 2026-10-07T12:36:58.459333+00:00 ---
+fe_version=fe_v1
+include_bureau_balance=True
+train_full=(307511, 220) -> split train=(246008, 220) valid=(61503, 220)
+test_full=(48744, 219)
+target_rate_train=0.0807 valid=0.0807
+bureau_balance=included
+steps=['application_train shape=(307511, 122)', 'bureau_agg shape=(305811, 32)', 'bureau_balance_agg shape=(134542, 7)', 'previous_agg shape=(338857, 30)', 'installments_agg shape=(339587, 10)', 'pos_agg shape=(337252, 7)', 'credit_card_agg shape=(103558, 11)', 'train_full shape=(307511, 220)', 'test_full shape=(48744, 219)']
+artefacts={'interim_train': 'data\\interim\\train_full.parquet', 'interim_test': 'data\\interim\\test_full.parquet', 'processed_train': 'data\\processed\\train.parquet', 'processed_valid': 'data\\processed\\valid.parquet', 'processed_test': 'data\\processed\\test.parquet'}
+status=OK
+
+--- SMOKE LightGBM fe_v1 (seuil 0.5) ---
+AUC=0.7834 accuracy=0.7319 f1=0.2948 recall=0.6941
+FN=1519 FP=14967 cost_10FN_1FP=30157
+n_features=218 cat_cols=16
+note: AUC attendue ~0.70-0.78 pour fe_v1 simple; >0.82 => suspecter leakage
+status=OK
+
+--- MLFLOW RUNS 2026-10-07 (experiment credit-scoring-fe_v1, sqlite mlflow.db) ---
+logreg_baseline_fe_v1:
+  AUC=0.7703 accuracy=0.7059 f1=0.2765 recall=0.6961
+  FN=1509 FP=16576 business_cost@0.5 (10:1)=31666
+  run_id=687516d85f3543b1a904164ac8ca4acc
+lightgbm_baseline_fe_v1:
+  AUC=0.7844 accuracy=0.7420 f1=0.2996 recall=0.6834
+  FN=1572 FP=14293 business_cost@0.5 (10:1)=30013
+  run_id=1a589406ac6d4419a536e2fbf6c5e5c9
+note: LightGBM > LR sur AUC et coût@0.5 ; seuil 0.5 non optimisé encore
+status=OK
